@@ -1,0 +1,64 @@
+const winningActions = { poing: "energie", pied: "poing", energie: "pied" };
+
+function calculateDamage(attacker, defender, random = Math.random) {
+  const base = 10;
+  const strength = attacker.getStrength();
+  const endurance = defender.getEndurance();
+  const calculated = Math.max(
+    1,
+    Math.round((base + strength * 2) * (1 - endurance / 100)),
+  );
+  if (defender.getLuck() > 0) {
+    const dodgeRoll = Math.floor(random() * 100) + 1;
+    if (defender.getLuck() * 2 >= dodgeRoll) {
+      return {
+        amount: 0,
+        details: { base, strength, endurance, damage: 0, dodged: true },
+      };
+    }
+  }
+
+  return {
+    amount: calculated,
+    details: { base, strength, endurance, damage: calculated, dodged: false },
+  };
+}
+
+export function resolveCombat(player, opponent, random = Math.random) {
+  const playerAction = player.getAction();
+  const opponentAction = opponent.getAction();
+
+  if (playerAction === opponentAction) {
+    return {
+      playerDamage: 0,
+      opponentDamage: 0,
+      winner: "draw",
+      message: "Même attaque : aucun dégât.",
+      damageDetails: null,
+    };
+  }
+
+  if (winningActions[playerAction] === opponentAction) {
+    const result = calculateDamage(player, opponent, random);
+    return {
+      playerDamage: 0,
+      opponentDamage: result.amount,
+      winner: "player",
+      damageDetails: result.details,
+      message: result.amount
+        ? `${player.getName()} touche et inflige ${result.amount} dégâts.`
+        : `${opponent.getName()} esquive l’attaque !`,
+    };
+  }
+
+  const result = calculateDamage(opponent, player, random);
+  return {
+    playerDamage: result.amount,
+    opponentDamage: 0,
+    winner: "opponent",
+    damageDetails: result.details,
+    message: result.amount
+      ? `${opponent.getName()} touche et inflige ${result.amount} dégâts.`
+      : `${player.getName()} esquive l’attaque !`,
+  };
+}
