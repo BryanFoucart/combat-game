@@ -35,8 +35,8 @@ export function resolveCombat(player, opponent, random = Math.random) {
 
   if (winner === "draw") {
     return {
-      playerDamage: 0,
-      opponentDamage: 0,
+      damageToPlayer: 0,
+      damageToOpponent: 0,
       winner: "draw",
       message: "Même attaque : aucun dégât.",
       damageDetails: null,
@@ -46,8 +46,8 @@ export function resolveCombat(player, opponent, random = Math.random) {
   if (winner === "player") {
     const result = calculateDamage(player, opponent, random);
     return {
-      playerDamage: 0,
-      opponentDamage: result.amount,
+      damageToPlayer: 0,
+      damageToOpponent: result.amount,
       winner: "player",
       damageDetails: result.details,
       message: result.amount
@@ -58,8 +58,8 @@ export function resolveCombat(player, opponent, random = Math.random) {
 
   const result = calculateDamage(opponent, player, random);
   return {
-    playerDamage: result.amount,
-    opponentDamage: 0,
+    damageToPlayer: result.amount,
+    damageToOpponent: 0,
     winner: "opponent",
     damageDetails: result.details,
     message: result.amount

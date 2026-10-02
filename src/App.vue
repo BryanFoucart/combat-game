@@ -153,8 +153,8 @@ function chooseAction(action) {
   opponent.value.setAction(actions[Math.floor(Math.random() * actions.length)].id)
   const outcome = resolveCombat(player.value, opponent.value)
   const aiAction = actions.find(({ id }) => id === opponent.value.getAction())
-  if (outcome.playerDamage > 0) opponent.value.setHP(opponent.value.getHP() - outcome.playerDamage)
-  if (outcome.opponentDamage > 0) player.value.setHP(player.value.getHP() - outcome.opponentDamage)
+  if (outcome.damageToPlayer > 0) player.value.setHP(player.value.getHP() - outcome.damageToPlayer)
+  if (outcome.damageToOpponent > 0) opponent.value.setHP(opponent.value.getHP() - outcome.damageToOpponent)
 
   const detail = outcome.damageDetails
   const damageBreakdown = detail
