@@ -1,9 +1,9 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import CharacterCard from './components/CharacterCard.vue'
 import { CharacterController } from './controllers/CharacterController.js'
 import { avatarUrl, fallbackAvatarUrl } from './game/avatar.js'
-import { playMatchSound, playRoundSound, setAudioEnabled } from './game/audio.js'
+import { playMatchSound, playRoundSound, setAudioEnabled, setMusicMode } from './game/audio.js'
 import { resolveCombat } from './services/combatSystem.js'
 import homeBackground from './assets/background/background.webp'
 
@@ -21,7 +21,7 @@ const battleResult = ref('')
 const selectedAction = ref('')
 const battlePrompt = ref('')
 const aiActsFirst = ref(false)
-const soundEnabled = ref(false)
+const soundEnabled = ref(true)
 const avatarIndex = ref(1)
 const form = ref(emptyForm())
 const statNames = ['strength', 'dexterity', 'luck', 'endurance']
@@ -55,6 +55,10 @@ const greeting = computed(() =>
   cookieAccepted.value && player.value ? `Bon retour, ${player.value.getName()}` : 'Bienvenue, Combattant',
 )
 const avatarSource = computed(() => avatarUrl(avatarIndex.value, 'profil'))
+
+watch(screen, (currentScreen) => {
+  setMusicMode(currentScreen === 'battle' ? 'battle' : 'menu')
+})
 
 function emptyForm() {
   return { name: '', strength: 0, dexterity: 0, luck: 0, endurance: 0 }
@@ -214,6 +218,8 @@ function chooseAction(action) {
 }
 
 onMounted(() => {
+  soundEnabled.value = setAudioEnabled(true)
+  setMusicMode(screen.value === 'battle' ? 'battle' : 'menu')
   try {
     if (localStorage.getItem('CookieAllows') === 'yes') {
       cookieAccepted.value = true

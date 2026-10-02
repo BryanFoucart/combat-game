@@ -42,4 +42,4 @@ Vite intègre les deux familles au build. Chaque vue sélectionne sa propre déc
 
 Les images des adversaires peuvent être ajoutées dans `src/assets/monsters/` en `.webp`, `.png`, `.jpg` ou `.jpeg`. Le nom de fichier (sans extension) sert d’identifiant ; l’IA évite l’identifiant d’avatar du joueur. Sans fichier, un portrait de secours est utilisé.
 
-Le bouton **SON ON/OFF** active ou coupe la musique synthétisée et les effets de round et de fin de combat. L’activation est manuelle pour respecter le blocage de lecture automatique des navigateurs.
+Le son est activé par défaut : une ambiance calme et mélodique joue sur l’accueil, le profil et la création, puis une boucle plus rapide accompagne les combats. Les navigateurs bloquant parfois l’autoplay, la lecture démarre au premier geste de l’utilisateur. Les effets de round et de fin de combat baissent temporairement la musique. Le bouton **SON ON/OFF** permet de couper ou réactiver l’ensemble.
