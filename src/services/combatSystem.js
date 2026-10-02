@@ -8,23 +8,46 @@ function calculateDamage(attacker, defender, random = Math.random) {
   const base = 10;
   const strength = attacker.getStrength();
   const endurance = defender.getEndurance();
-  const calculated = Math.max(
-    1,
-    Math.round((base + strength * 2) * (1 - endurance / 100)),
-  );
-  if (defender.getLuck() > 0) {
+  const dexterity = defender.getDexterity();
+
+  if (dexterity > 0) {
     const dodgeRoll = Math.floor(random() * 100) + 1;
-    if (defender.getLuck() * 2 >= dodgeRoll) {
+    if (dexterity * 2 >= dodgeRoll) {
       return {
         amount: 0,
-        details: { base, strength, endurance, damage: 0, dodged: true },
+        details: {
+          base,
+          strength,
+          endurance,
+          dexterity,
+          damage: 0,
+          dodged: true,
+          critical: false,
+        },
       };
     }
   }
 
+  const rawDamage = base + strength;
+  const critical =
+    attacker.getLuck() > 0 &&
+    Math.floor(random() * 100) + 1 <= attacker.getLuck() * 2;
+  const damageBeforeEndurance = critical
+    ? Math.floor(rawDamage * 1.5)
+    : rawDamage;
+  const amount = Math.max(0, damageBeforeEndurance - endurance);
+
   return {
-    amount: calculated,
-    details: { base, strength, endurance, damage: calculated, dodged: false },
+    amount,
+    details: {
+      base,
+      strength,
+      endurance,
+      dexterity,
+      damage: amount,
+      dodged: false,
+      critical,
+    },
   };
 }
 
@@ -51,7 +74,7 @@ export function resolveCombat(player, opponent, random = Math.random) {
       winner: "player",
       damageDetails: result.details,
       message: result.amount
-        ? `${player.getName()} touche et inflige ${result.amount} dégâts.`
+        ? `${player.getName()} touche et inflige ${result.amount} dégâts.${result.details.critical ? " Coup critique !" : ""}`
         : `${opponent.getName()} esquive l’attaque !`,
     };
   }
@@ -63,7 +86,7 @@ export function resolveCombat(player, opponent, random = Math.random) {
     winner: "opponent",
     damageDetails: result.details,
     message: result.amount
-      ? `${opponent.getName()} touche et inflige ${result.amount} dégâts.`
+      ? `${opponent.getName()} touche et inflige ${result.amount} dégâts.${result.details.critical ? " Coup critique !" : ""}`
       : `${player.getName()} esquive l’attaque !`,
   };
 }

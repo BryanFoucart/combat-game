@@ -3,7 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import CharacterCard from './components/CharacterCard.vue'
 import { CharacterController } from './controllers/CharacterController.js'
 import { avatarUrl, fallbackAvatarUrl } from './game/avatar.js'
+import { playMatchSound, playRoundSound, setAudioEnabled } from './game/audio.js'
 import { resolveCombat } from './services/combatSystem.js'
+import homeBackground from './assets/background/Duel épique dans l’arène médiévale.webp'
 
 const controller = new CharacterController()
 const screen = ref('welcome')
@@ -17,6 +19,9 @@ const battleRound = ref(1)
 const battleLog = ref([])
 const battleResult = ref('')
 const selectedAction = ref('')
+const battlePrompt = ref('')
+const aiActsFirst = ref(false)
+const soundEnabled = ref(false)
 const avatarIndex = ref(1)
 const form = ref(emptyForm())
 const statNames = ['strength', 'dexterity', 'luck', 'endurance']
@@ -27,10 +32,10 @@ const statLabels = {
   endurance: 'Endurance',
 }
 const statHelp = {
-  strength: 'Augmente les dégâts infligés : +2 dégâts par point.',
-  dexterity: 'Une statistique de progression, disponible pour vos futurs styles de combat.',
-  luck: 'Chaque point ajoute 2 % de chance d’annuler les dégâts reçus.',
-  endurance: 'Réduit les dégâts reçus et augmente les PV maximum de 10.',
+  strength: 'Ajoute 1 dégât par point à l’attaque. Cette valeur entre aussi dans le calcul des coups critiques.',
+  dexterity: 'Chaque point donne 2 % de chance d’esquiver et augmente l’initiative. Initiative = 10 + Dextérité.',
+  luck: 'Chaque point donne 2 % de chance de coup critique et augmente les gains d’XP de 10 %.',
+  endurance: 'Retire sa valeur aux dégâts reçus. Augmente aussi les PV maximum de 10 par point.',
 }
 const actions = [
   { id: 'poing', label: 'Poing', symbol: '✊' },
@@ -42,11 +47,12 @@ const pointBudget = computed(() => 6 + Math.max(0, (player.value?.getLevel() ?? 
 const pointsSpent = computed(() => statNames.reduce((total, stat) => total + form.value[stat], 0))
 const pointsRemaining = computed(() => pointBudget.value - pointsSpent.value)
 const previewHp = computed(() => 50 + form.value.endurance * 10)
+const initiativePreview = computed(() => 10 + form.value.dexterity)
 const isFormValid = computed(() =>
   form.value.name.trim().length > 0 && pointsRemaining.value === 0,
 )
 const greeting = computed(() =>
-  cookieAccepted.value && player.value ? `Bon retour, ${player.value.getName()}` : 'Bonjour, Combattant',
+  cookieAccepted.value && player.value ? `Bon retour, ${player.value.getName()}` : 'Bienvenue, Combattant',
 )
 const avatarSource = computed(() => avatarUrl(avatarIndex.value, 'profil'))
 
@@ -115,6 +121,10 @@ function changeAvatar(amount) {
   avatarIndex.value = ((avatarIndex.value - 1 + amount + 30) % 30) + 1
 }
 
+async function toggleAudio() {
+  soundEnabled.value = await setAudioEnabled(!soundEnabled.value)
+}
+
 function changeStat(stat, amount) {
   const nextValue = form.value[stat] + amount
   if (nextValue < 0 || nextValue > 10 || (amount > 0 && pointsRemaining.value <= 0)) return
@@ -143,35 +153,64 @@ function beginBattle() {
   battleLog.value = []
   battleResult.value = ''
   selectedAction.value = ''
+  prepareRound()
   screen.value = 'battle'
+}
+
+function randomAction() {
+  return actions[Math.floor(Math.random() * actions.length)]
+}
+
+function prepareRound() {
+  aiActsFirst.value = opponent.value.getInitiative() > player.value.getInitiative()
+  if (aiActsFirst.value) {
+    const action = randomAction()
+    opponent.value.setAction(action.id)
+    battlePrompt.value = `L’adversaire prend l’initiative (${opponent.value.getInitiative()}) et annonce ${action.label}. À toi de répondre.`
+  } else {
+    opponent.value.setAction('')
+    battlePrompt.value = player.value.getInitiative() === opponent.value.getInitiative()
+      ? `Initiative égale (${player.value.getInitiative()}) : tu choisis en premier.`
+      : `Tu prends l’initiative (${player.value.getInitiative()}). Choisis ton attaque.`
+  }
 }
 
 function chooseAction(action) {
   if (battleResult.value || selectedAction.value) return
   selectedAction.value = action
   player.value.setAction(action)
-  opponent.value.setAction(actions[Math.floor(Math.random() * actions.length)].id)
+  if (!aiActsFirst.value) opponent.value.setAction(randomAction().id)
   const outcome = resolveCombat(player.value, opponent.value)
   const aiAction = actions.find(({ id }) => id === opponent.value.getAction())
+  playRoundSound(outcome.winner)
   if (outcome.damageToPlayer > 0) player.value.setHP(player.value.getHP() - outcome.damageToPlayer)
   if (outcome.damageToOpponent > 0) opponent.value.setHP(opponent.value.getHP() - outcome.damageToOpponent)
 
   const detail = outcome.damageDetails
-  const damageBreakdown = detail
-    ? ` ${detail.damage} dégât${detail.damage > 1 ? 's' : ''} (base ${detail.base} + Force ${detail.strength} × 2, Endurance ${detail.endurance} %${detail.dodged ? ', esquive' : ''}).`
-    : ''
+  let damageBreakdown = ''
+  if (detail?.dodged) {
+    damageBreakdown = ` Esquive grâce à la Dextérité (${detail.dexterity * 2} %).`
+  } else if (detail) {
+    damageBreakdown = detail.critical
+      ? ` (${detail.base} + Force ${detail.strength}) × 1,5 - Endurance ${detail.endurance}.`
+      : ` (${detail.base} + Force ${detail.strength} - Endurance ${detail.endurance}).`
+  }
   battleLog.value.unshift(`L’IA choisit ${aiAction.label}. ${outcome.message}${damageBreakdown}`)
   if (player.value.getHP() <= 0 || opponent.value.getHP() <= 0) {
     const won = opponent.value.getHP() <= 0
     battleResult.value = won ? 'Victoire !' : 'Défaite…'
-    player.value.setXP(player.value.getXP() + (won ? 25 : 10))
-    battleLog.value.unshift(`${won ? 'Victoire' : 'Défaite'} : +${won ? 25 : 10} XP`)
+    const baseXp = won ? 25 : 10
+    const earnedXp = Math.floor(baseXp * (1 + player.value.getLuck() * 0.1))
+    player.value.setXP(player.value.getXP() + earnedXp)
+    battleLog.value.unshift(`${won ? 'Victoire' : 'Défaite'} : +${earnedXp} XP`)
+    playMatchSound(won)
     savePlayer()
     return
   }
 
   battleRound.value += 1
   selectedAction.value = ''
+  prepareRound()
 }
 
 onMounted(() => {
@@ -198,35 +237,35 @@ onMounted(() => {
         <span>FIGHT CLUB <small>ARÈNE WEB</small></span>
       </a>
       <div class="topbar-meta"><span class="status-dot"></span> SAISON 01 <span class="topbar-divider">/</span> COMBAT EN LIGNE</div>
+      <button class="sound-toggle" :aria-pressed="soundEnabled" :aria-label="soundEnabled ? 'Désactiver la musique et les sons' : 'Activer la musique et les sons'" @click="toggleAudio">
+        <span aria-hidden="true">{{ soundEnabled ? '♫' : '♪' }}</span><span>{{ soundEnabled ? 'SON ON' : 'SON OFF' }}</span>
+      </button>
       <div v-if="player" class="level-chip">NIV. {{ player.getLevel() }}</div>
     </header>
 
     <section v-if="screen === 'welcome'" class="welcome-view">
-      <div class="welcome-copy">
-        <p class="eyebrow"><span>01</span> / LE DOJO VOUS ATTEND</p>
-        <h1>{{ greeting }}<span class="period">.</span></h1>
-        <p class="welcome-subtitle">Entre dans l’arène. Forge ton combattant. Fais parler tes poings.</p>
-        <div class="welcome-rule"></div>
-        <div v-if="consentVisible" class="consent-panel">
-          <div>
-            <p class="consent-title">Mémoire du combattant</p>
-            <p class="consent-description">Autoriser le stockage local pour retrouver ton personnage à ta prochaine visite.</p>
+      <div class="welcome-art">
+        <img class="welcome-background" :src="homeBackground" alt="Deux combattants dans une arène médiévale" />
+        <div class="welcome-shade"></div>
+        <div class="welcome-copy">
+          <p class="eyebrow"><span>01</span> / LE DOJO VOUS ATTEND</p>
+          <h1>{{ greeting }}<span class="period">.</span></h1>
+          <p class="welcome-subtitle">Entre dans l’arène. Forge ton combattant. Fais parler tes poings.</p>
+          <div v-if="consentVisible" class="consent-panel">
+            <div>
+              <p class="consent-title">Mémoire du combattant</p>
+              <p class="consent-description">Autoriser le stockage local pour retrouver ton personnage à ta prochaine visite.</p>
+            </div>
+            <div class="consent-options" role="radiogroup" aria-label="Autorisation de stockage local">
+              <button :class="['consent-option', { chosen: cookieChoice === 'yes' }]" @click="cookieChoice = 'yes'">Oui</button>
+              <button :class="['consent-option', { chosen: cookieChoice === 'no' }]" @click="cookieChoice = 'no'">Non</button>
+            </div>
+            <p class="privacy-note">En cas de refus, ton personnage restera disponible jusqu’à la fermeture de cette page.</p>
           </div>
-          <div class="consent-options" role="radiogroup" aria-label="Autorisation de stockage local">
-            <button :class="['consent-option', { chosen: cookieChoice === 'yes' }]" @click="cookieChoice = 'yes'">Oui</button>
-            <button :class="['consent-option', { chosen: cookieChoice === 'no' }]" @click="cookieChoice = 'no'">Non</button>
-          </div>
-          <p class="privacy-note">En cas de refus, ton personnage restera disponible jusqu’à la fermeture de cette page.</p>
+          <button class="button button-primary enter-button" :disabled="consentVisible && !cookieChoice" @click="consentVisible ? (acceptCookies(), enterGame()) : enterGame()">
+            Entrer <span aria-hidden="true">→</span>
+          </button>
         </div>
-        <button class="button button-primary enter-button" :disabled="consentVisible && !cookieChoice" @click="consentVisible ? (acceptCookies(), enterGame()) : enterGame()">
-          Entrer <span aria-hidden="true">→</span>
-        </button>
-      </div>
-      <div class="welcome-art" aria-hidden="true">
-        <div class="art-stamp">FIGHT<br>FOR<br>GLORY</div>
-        <div class="art-ring ring-one"></div><div class="art-ring ring-two"></div>
-        <div class="art-silhouette"><div class="sil-head"></div><div class="sil-body"></div><div class="sil-arm"></div></div>
-        <div class="art-caption"><span>DOJO 01</span><span>45° 32′ N / 4° 50′ E</span></div>
       </div>
     </section>
 
@@ -252,7 +291,7 @@ onMounted(() => {
         <div class="form-panel">
           <label class="field-label" for="fighter-name">NOM DE COMBATTANT</label>
           <input id="fighter-name" v-model="form.name" class="name-input" maxlength="22" placeholder="Ex. Kaito" autocomplete="off" />
-          <div class="stats-heading"><div><p class="field-label">ATTRIBUTS</p><p class="stats-hint">Répartis tes points entre les disciplines.</p></div><div class="points-counter"><strong>{{ pointsRemaining }}</strong><span> / {{ pointBudget }} PTS</span></div></div>
+          <div class="stats-heading"><div><p class="field-label">ATTRIBUTS</p><p class="stats-hint">Répartis tes points entre les disciplines.</p></div><div class="stat-summary"><div class="points-counter"><strong>{{ pointsRemaining }}</strong><span> / {{ pointBudget }} PTS</span></div><div class="initiative-readout"><span>INIT.</span><strong>{{ initiativePreview }}</strong></div></div></div>
           <div class="stat-list">
             <div v-for="stat in statNames" :key="stat" class="stat-row">
               <div class="stat-name"><span>{{ statLabels[stat] }}</span><span class="info-tip" tabindex="0" :aria-label="statHelp[stat]" :data-tip="statHelp[stat]">i</span></div>
@@ -283,6 +322,7 @@ onMounted(() => {
         <CharacterCard v-if="opponent" :character="opponent" side="opponent" />
       </div>
       <div class="action-area">
+        <p class="turn-prompt" role="status">{{ battlePrompt }}</p>
         <div class="action-cards">
           <button v-for="action in actions" :key="action.id" :class="['action-card', { selected: selectedAction === action.id }]" :disabled="!!battleResult || !!selectedAction" @click="chooseAction(action.id)">
             <span class="action-symbol">{{ action.symbol }}</span><span class="action-label">{{ action.label }}</span><span class="action-index">0{{ actions.indexOf(action) + 1 }}</span>

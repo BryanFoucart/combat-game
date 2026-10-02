@@ -1,4 +1,5 @@
 import { Character } from "../models/Character.js";
+import { chooseMonsterAvatar } from "../game/monsters.js";
 
 const attributes = ["strength", "endurance", "dexterity", "luck"];
 
@@ -63,18 +64,11 @@ export class CharacterController {
       remaining -= 1;
     }
 
-    const availableAvatars = Array.from(
-      { length: 30 },
-      (_, index) => `avatar_${index + 1}`,
-    ).filter((avatar) => avatar !== player.getAvatar());
-    const avatar =
-      availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
-
     return this.createCharacter({
       name: "Adversaire",
       level,
       xp: player.getXP(),
-      avatar,
+      avatar: chooseMonsterAvatar(player.getAvatar()),
       ...stats,
     });
   }

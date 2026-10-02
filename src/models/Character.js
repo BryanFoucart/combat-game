@@ -68,6 +68,9 @@ export class Character {
   getDexterity() {
     return this.dexterity;
   }
+  getInitiative() {
+    return 10 + this.dexterity;
+  }
   setDexterity(value) {
     this.dexterity = Math.min(10, Math.max(0, Math.floor(Number(value) || 0)));
   }

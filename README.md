@@ -23,7 +23,9 @@ Pour vérifier le build de production : `npm run build`.
 
 Un personnage de niveau 1 répartit 6 points entre quatre attributs, puis gagne 2 points par niveau. Chaque attribut est plafonné à 10 et le niveau à 10. Les niveaux suivants commencent à 101, 201, 301 XP, etc. L’IA partage le niveau du joueur, reçoit le budget d’attributs correspondant et un avatar différent.
 
-Poing bat Énergie, Pied bat Poing et Énergie bat Pied. Une attaque gagnante inflige `(10 + Force × 2) × (1 - Endurance de la cible / 100)` dégâts, arrondis à l’entier. Chaque point de chance donne 2 % de chance d’annuler une attaque reçue. Une victoire rapporte 25 XP ; une défaite, 10 XP.
+Poing bat Énergie, Pied bat Poing et Énergie bat Pied. Les dégâts sont `max(0, 10 + Force de l’attaquant - Endurance de la cible)`. Chaque point de Dextérité donne 2 % de chance d’esquiver et ajoute 1 à l’initiative, calculée comme `10 + Dextérité`. Chaque point de Chance donne 2 % de chance de coup critique ; un critique applique `floor((10 + Force) × 1,5) - Endurance`. La Chance augmente aussi l’XP gagnée de 10 % par point, arrondie à l’entier inférieur.
+
+L’initiative décide qui révèle son action en premier. Si l’IA est plus rapide, elle annonce son attaque et le joueur peut choisir sa réponse ; l’égalité favorise le joueur. Le résultat RPS est ensuite résolu une seule fois.
 
 Le choix de consentement est conservé dans `localStorage` sous `CookieAllows` (`yes` ou `no`). `yes` restaure le personnage et masque la demande lors des prochaines visites. `no` redemande l’autorisation à la visite suivante et ne conserve pas le personnage.
 
@@ -35,3 +37,9 @@ Place deux découpes par personnage, avec les mêmes numéros dans chaque dossie
 - Combat : `src/assets/avatars/fight/avatar_1.webp` à `avatar_30.webp`, en **960 × 600 px (8:5)**. Cette découpe paysage remplit le cadre des cartes de combat.
 
 Vite intègre les deux familles au build. Chaque vue sélectionne sa propre découpe selon le numéro d’avatar du personnage. Si un fichier manque, un portrait généré est affiché en secours.
+
+## Monstres et audio
+
+Les images des adversaires peuvent être ajoutées dans `src/assets/monsters/` en `.webp`, `.png`, `.jpg` ou `.jpeg`. Le nom de fichier (sans extension) sert d’identifiant ; l’IA évite l’identifiant d’avatar du joueur. Sans fichier, un portrait de secours est utilisé.
+
+Le bouton **SON ON/OFF** active ou coupe la musique synthétisée et les effets de round et de fin de combat. L’activation est manuelle pour respecter le blocage de lecture automatique des navigateurs.
