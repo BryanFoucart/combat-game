@@ -1,4 +1,8 @@
-const winningActions = { poing: "energie", pied: "poing", energie: "pied" };
+const matchupWinners = {
+  poing: { poing: "draw", pied: "opponent", energie: "player" },
+  pied: { poing: "player", pied: "draw", energie: "opponent" },
+  energie: { poing: "opponent", pied: "player", energie: "draw" },
+};
 
 function calculateDamage(attacker, defender, random = Math.random) {
   const base = 10;
@@ -27,8 +31,9 @@ function calculateDamage(attacker, defender, random = Math.random) {
 export function resolveCombat(player, opponent, random = Math.random) {
   const playerAction = player.getAction();
   const opponentAction = opponent.getAction();
+  const winner = matchupWinners[playerAction]?.[opponentAction] ?? "draw";
 
-  if (playerAction === opponentAction) {
+  if (winner === "draw") {
     return {
       playerDamage: 0,
       opponentDamage: 0,
@@ -38,7 +43,7 @@ export function resolveCombat(player, opponent, random = Math.random) {
     };
   }
 
-  if (winningActions[playerAction] === opponentAction) {
+  if (winner === "player") {
     const result = calculateDamage(player, opponent, random);
     return {
       playerDamage: 0,
