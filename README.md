@@ -23,9 +23,9 @@ Pour vérifier le build de production : `npm run build`.
 
 Un personnage de niveau 1 répartit 6 points entre quatre attributs, puis gagne 2 points par niveau. Chaque attribut est plafonné à 10 et le niveau à 10. Les niveaux suivants commencent à 101, 201, 301 XP, etc. L’IA partage le niveau du joueur, reçoit le budget d’attributs correspondant et un avatar différent.
 
-Poing bat Énergie, Pied bat Poing et Énergie bat Pied. Les dégâts sont `max(0, 10 + Force de l’attaquant - Endurance de la cible)`. Chaque point de Dextérité donne 2 % de chance d’esquiver et ajoute 1 à l’initiative, calculée comme `10 + Dextérité`. Chaque point de Chance donne 2 % de chance de coup critique ; un critique applique `floor((10 + Force) × 1,5) - Endurance`. La Chance augmente aussi l’XP gagnée de 10 % par point, arrondie à l’entier inférieur.
+Poing bat Énergie, Pied bat Poing et Énergie bat Pied. Les dégâts sont `max(0, 10 + Force de l’attaquant × 2 - Endurance de la cible)`. Chaque point de Dextérité donne 2 % de chance d’esquiver et ajoute 1 à l’initiative, calculée comme `10 + Dextérité`. Chaque point de Chance donne 2 % de chance de coup critique ; un critique applique `floor((10 + Force × 2) × 1,5) - Endurance`. La Chance augmente aussi l’XP gagnée de 10 % par point, arrondie à l’entier inférieur.
 
-L’initiative décide qui révèle son action en premier. Si l’IA est plus rapide, elle annonce son attaque et le joueur peut choisir sa réponse ; l’égalité favorise le joueur. Le résultat RPS est ensuite résolu une seule fois.
+L’initiative décide qui révèle son action en premier. Si l’IA est plus rapide, elle annonce une action tirée aléatoirement, indépendamment de son vrai choix ; l’annonce peut être vraie ou un bluff. Le joueur choisit ensuite sa réponse, puis le résultat RPS est résolu une seule fois.
 
 Le choix de consentement est conservé dans `localStorage` sous `CookieAllows` (`yes` ou `no`). `yes` restaure le personnage et masque la demande lors des prochaines visites. `no` redemande l’autorisation à la visite suivante et ne conserve pas le personnage.
 

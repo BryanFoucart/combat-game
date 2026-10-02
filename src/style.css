@@ -830,8 +830,15 @@ h1 {
   max-width: 650px;
   margin: 24px auto 0;
 }
+.turn-guidance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
 .turn-prompt {
-  margin: 0 0 12px;
+  flex: 1;
+  margin: 0;
   padding: 10px 12px;
   border-left: 3px solid var(--lime);
   background: #edf0eb;
@@ -839,6 +846,10 @@ h1 {
   font-size: 11px;
   font-weight: 600;
   line-height: 1.45;
+}
+.turn-info::after {
+  right: 0;
+  left: auto;
 }
 .action-cards {
   display: grid;

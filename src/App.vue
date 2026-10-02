@@ -5,7 +5,7 @@ import { CharacterController } from './controllers/CharacterController.js'
 import { avatarUrl, fallbackAvatarUrl } from './game/avatar.js'
 import { playMatchSound, playRoundSound, setAudioEnabled } from './game/audio.js'
 import { resolveCombat } from './services/combatSystem.js'
-import homeBackground from './assets/background/Duel épique dans l’arène médiévale.webp'
+import homeBackground from './assets/background/background.webp'
 
 const controller = new CharacterController()
 const screen = ref('welcome')
@@ -32,7 +32,7 @@ const statLabels = {
   endurance: 'Endurance',
 }
 const statHelp = {
-  strength: 'Ajoute 1 dégât par point à l’attaque. Cette valeur entre aussi dans le calcul des coups critiques.',
+  strength: 'Chaque point ajoute 2 dégâts à l’attaque. La Force est aussi multipliée par 2 dans le calcul des coups critiques.',
   dexterity: 'Chaque point donne 2 % de chance d’esquiver et augmente l’initiative. Initiative = 10 + Dextérité.',
   luck: 'Chaque point donne 2 % de chance de coup critique et augmente les gains d’XP de 10 %.',
   endurance: 'Retire sa valeur aux dégâts reçus. Augmente aussi les PV maximum de 10 par point.',
@@ -164,9 +164,9 @@ function randomAction() {
 function prepareRound() {
   aiActsFirst.value = opponent.value.getInitiative() > player.value.getInitiative()
   if (aiActsFirst.value) {
-    const action = randomAction()
-    opponent.value.setAction(action.id)
-    battlePrompt.value = `L’adversaire prend l’initiative (${opponent.value.getInitiative()}) et annonce ${action.label}. À toi de répondre.`
+    const announcement = randomAction()
+    opponent.value.setAction('')
+    battlePrompt.value = `L’adversaire prend l’initiative (${opponent.value.getInitiative()}) et annonce ${announcement.label}. À toi de répondre.`
   } else {
     opponent.value.setAction('')
     battlePrompt.value = player.value.getInitiative() === opponent.value.getInitiative()
@@ -179,7 +179,7 @@ function chooseAction(action) {
   if (battleResult.value || selectedAction.value) return
   selectedAction.value = action
   player.value.setAction(action)
-  if (!aiActsFirst.value) opponent.value.setAction(randomAction().id)
+  opponent.value.setAction(randomAction().id)
   const outcome = resolveCombat(player.value, opponent.value)
   const aiAction = actions.find(({ id }) => id === opponent.value.getAction())
   playRoundSound(outcome.winner)
@@ -192,8 +192,8 @@ function chooseAction(action) {
     damageBreakdown = ` Esquive grâce à la Dextérité (${detail.dexterity * 2} %).`
   } else if (detail) {
     damageBreakdown = detail.critical
-      ? ` (${detail.base} + Force ${detail.strength}) × 1,5 - Endurance ${detail.endurance}.`
-      : ` (${detail.base} + Force ${detail.strength} - Endurance ${detail.endurance}).`
+      ? ` (${detail.base} + Force ${detail.strength} × 2) × 1,5 - Endurance ${detail.endurance}.`
+      : ` (${detail.base} + Force ${detail.strength} × 2 - Endurance ${detail.endurance}).`
   }
   battleLog.value.unshift(`L’IA choisit ${aiAction.label}. ${outcome.message}${damageBreakdown}`)
   if (player.value.getHP() <= 0 || opponent.value.getHP() <= 0) {
@@ -322,7 +322,10 @@ onMounted(() => {
         <CharacterCard v-if="opponent" :character="opponent" side="opponent" />
       </div>
       <div class="action-area">
-        <p class="turn-prompt" role="status">{{ battlePrompt }}</p>
+        <div class="turn-guidance">
+          <p class="turn-prompt" role="status">{{ battlePrompt }}</p>
+          <span class="info-tip turn-info" tabindex="0" aria-label="À propos de l’annonce de l’IA" data-tip="L’action annoncée est tirée séparément de son vrai choix : elle peut être vraie ou être un bluff.">i</span>
+        </div>
         <div class="action-cards">
           <button v-for="action in actions" :key="action.id" :class="['action-card', { selected: selectedAction === action.id }]" :disabled="!!battleResult || !!selectedAction" @click="chooseAction(action.id)">
             <span class="action-symbol">{{ action.symbol }}</span><span class="action-label">{{ action.label }}</span><span class="action-index">0{{ actions.indexOf(action) + 1 }}</span>

@@ -28,7 +28,7 @@ function calculateDamage(attacker, defender, random = Math.random) {
     }
   }
 
-  const rawDamage = base + strength;
+  const rawDamage = base + strength * 2;
   const critical =
     attacker.getLuck() > 0 &&
     Math.floor(random() * 100) + 1 <= attacker.getLuck() * 2;
